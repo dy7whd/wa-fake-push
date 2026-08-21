@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body style="font-family: -apple-system, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
+
+    <h2 style="color: #075e54;">WhatsApp Web-Bridge</h2>
+    <p style="color: #666;">Klicke hier, um Benachrichtigungen zu erlauben:</p>
+    <button id="btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;">Aktivieren</button>
+
+    <script>
+        document.getElementById('btn').addEventListener('click', async () => {
+            if (!('Notification' in window)) {
+                alert('Dein Gerät unterstützt keine Web-Benachrichtigungen.');
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                alert('Berechtigung erteilt! Du kannst die App jetzt zum Home-Bildschirm hinzufügen.');
+            } else {
+                alert('Berechtigung wurde verweigert.');
+            }
+        });
+    </script>
+</body>
+</html>
