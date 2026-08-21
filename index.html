@@ -11,46 +11,42 @@
 <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
 
     <h2 style="color: #075e54;">WhatsApp Bridge</h2>
-    <p id="status" style="color: #666; padding: 0 20px;">Tippe auf Verbinden, um Benachrichtigungen scharf zu schalten:</p>
+    <p id="status" style="color: #666; padding: 0 20px;">Tippe auf Verbinden, um Benachrichtigungen zu starten:</p>
     
     <button id="connect-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Verbinden</button>
 
     <script>
-        // Dein Topic-Name für ntfy
         const ntfyTopic = "david-whatsapp-test-1234";
 
         document.getElementById('connect-btn').addEventListener('click', async () => {
-            // 1. Service Worker registrieren falls noch nicht geschehen
             if ('serviceWorker' in navigator) {
                 await navigator.serviceWorker.register('sw.js');
             }
 
-            // 2. Benachrichtigungs-Berechtigung anfragen
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
-                alert('Bitte erlaube Benachrichtigungen in den iOS-Einstellungen!');
+                alert('Bitte erlaube Benachrichtigungen!');
                 return;
             }
 
-            document.getElementById('status').innerText = 'Status: Verbunden & lauscht auf Nachrichten...';
+            document.getElementById('status').innerText = 'Status: Verbunden & lauscht...';
             document.getElementById('connect-btn').style.background = '#128c7e';
             document.getElementById('connect-btn').innerText = 'Aktiv & Verbunden';
 
-            // 3. Verbindung zum ntfy-Stream aufbauen
             const eventSource = new EventSource(`https://ntfy.sh/${ntfyTopic}/sse`);
 
             eventSource.onmessage = function (event) {
                 try {
                     const data = JSON.parse(event.data);
                     
-                    // Prüfen ob es eine echte Nachricht ist
                     if (data.event === 'message') {
-                        // Individueller Name (Titel) oder Fallback auf WhatsApp
-                        const senderTitle = data.title || "WhatsApp";
+                        // Der Name des Absenders (z.B. Mama) wird der Haupttitel
+                        const senderName = data.title || "WhatsApp";
+                        // Die Nachricht wird der Body
                         const messageBody = data.message || "Neue Nachricht";
 
                         navigator.serviceWorker.ready.then(reg => {
-                            reg.showNotification(senderTitle, {
+                            reg.showNotification(senderName, {
                                 body: messageBody,
                                 icon: 'icon.png',
                                 badge: 'icon.png',
@@ -59,12 +55,8 @@
                         });
                     }
                 } catch (e) {
-                    console.error("Fehler beim Verarbeiten der Nachricht", e);
+                    console.error("Fehler", e);
                 }
-            };
-
-            eventSource.onerror = function () {
-                document.getElementById('status').innerText = 'Verbindung unterbrochen, versuche Reconnect...';
             };
         });
     </script>
