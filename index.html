@@ -8,67 +8,62 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
-<body style="font-family: -apple-system, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
 
     <h2 style="color: #075e54;">WhatsApp Bridge</h2>
-    <p id="status" style="color: #666; padding: 0 20px;">Tippe auf Verbinden:</p>
-    <button id="connect-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;">Verbinden</button>
+    <p id="status" style="color: #666; padding: 0 20px;">Tippe auf Verbinden, um Benachrichtigungen scharf zu schalten:</p>
+    
+    <button id="connect-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Verbinden</button>
 
     <script>
         const ntfyTopic = "david-whatsapp-test-1234";
 
         document.getElementById('connect-btn').addEventListener('click', async () => {
-            if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-                alert('Push wird nicht unterstützt.');
-                return;
+            // 1. Service Worker registrieren
+            if ('serviceWorker' in navigator) {
+                await navigator.serviceWorker.register('sw.js');
             }
 
+            // 2. Benachrichtigungs-Berechtigung anfragen
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
-                alert('Bitte Benachrichtigungen erlauben!');
+                alert('Bitte erlaube Benachrichtigungen in den iOS-Einstellungen!');
                 return;
             }
 
-            try {
-                const reg = await navigator.serviceWorker.register('sw.js');
-                await navigator.serviceWorker.ready;
+            document.getElementById('status').innerText = 'Status: Verbunden & lauscht auf Nachrichten...';
+            document.getElementById('connect-btn').style.background = '#128c7e';
+            document.getElementById('connect-btn').innerText = 'Aktiv & Verbunden';
 
-                // Korrigierter Endpoint für ntfy Web-Push
-                const response = await fetch(`https://ntfy.sh/${ntfyTopic}/push/pubkey`);
-                const vapidPublicKey = await response.text();
-                
-                // VAPID-Key konvertieren
-                const convertedKey = urlBase64ToUint8Array(vapidPublicKey.trim());
+            // 3. Verbindung zum ntfy-Stream aufbauen
+            const eventSource = new EventSource(`https://ntfy.sh/${ntfyTopic}/sse`);
 
-                const subscription = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: convertedKey
-                });
+            eventSource.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.event === 'message') {
+                        const senderTitle = data.title || "WhatsApp";
+                        const messageBody = data.message || "Neue Nachricht";
 
-                await fetch(`https://ntfy.sh/${ntfyTopic}/push/subscribe`, {
-                    method: 'POST',
-                    body: JSON.stringify(subscription)
-                });
+                        navigator.serviceWorker.ready.then(reg => {
+                            reg.showNotification(senderTitle, {
+                                body: messageBody,
+                                icon: 'icon.png',
+                                badge: 'icon.png',
+                                tag: 'whatsapp-fake'
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.error("Fehler beim Verarbeiten der Nachricht", e);
+                }
+            };
 
-                document.getElementById('status').innerText = 'Aktiv & Verbunden!';
-                document.getElementById('connect-btn').style.background = '#128c7e';
-                document.getElementById('connect-btn').innerText = 'Verbunden';
-                alert('Erfolgreich verbunden!');
-            } catch (err) {
-                alert('Fehler: ' + err.message);
-            }
+            eventSource.onerror = function () {
+                document.getElementById('status').innerText = 'Verbindung unterbrochen, versuche Reconnect...';
+            };
         });
-
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
     </script>
 </body>
 </html>
