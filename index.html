@@ -10,22 +10,30 @@
 </head>
 <body style="font-family: -apple-system, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
 
-    <h2 style="color: #075e54;">WhatsApp Web-Bridge</h2>
-    <p style="color: #666;">Klicke hier, um Benachrichtigungen zu erlauben:</p>
-    <button id="btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;">Aktivieren</button>
+    <h2 style="color: #075e54;">WhatsApp Test</h2>
+    <p style="color: #666;">Klicke den Button, geh sofort aus der App (Sperrbildschirm ansehen) und warte 4 Sekunden:</p>
+    <button id="test-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;">Test-Benachrichtigung starten</button>
 
     <script>
-        document.getElementById('btn').addEventListener('click', async () => {
-            if (!('Notification' in window)) {
-                alert('Dein Gerät unterstützt keine Web-Benachrichtigungen.');
+        document.getElementById('test-btn').addEventListener('click', async () => {
+            // 1. Berechtigung sicherheitshalber anfragen
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                alert('Keine Berechtigung erteilt!');
                 return;
             }
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                alert('Berechtigung erteilt! Du kannst die App jetzt zum Home-Bildschirm hinzufügen.');
-            } else {
-                alert('Berechtigung wurde verweigert.');
-            }
+
+            alert('Wichtig: Drücke jetzt sofort den Home-Balken/Home-Button und schließe die App, damit du auf dem Sperrbildschirm bist! In 4 Sekunden kommt die Nachricht.');
+
+            // 2. 4 Sekunden warten, damit du Zeit hast, die App zu verlassen
+            setTimeout(async () => {
+                const registration = await navigator.serviceWorker.ready;
+                registration.showNotification('Mama ❤️', {
+                    body: 'Bist du bald zu Hause?',
+                    icon: 'icon.png',
+                    badge: 'icon.png'
+                });
+            }, 4000);
         });
     </script>
 </body>
