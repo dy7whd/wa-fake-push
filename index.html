@@ -7,32 +7,132 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #efeae2;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Header im WhatsApp-Design */
+        .wa-header {
+            background-color: #075e54;
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        /* Chat-Bereich */
+        .wa-chat {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .status-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin: auto;
+            max-width: 300px;
+        }
+        button {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        /* Das originalgetreue WhatsApp In-App Banner */
+        #wa-banner {
+            position: fixed;
+            top: -100px;
+            left: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 12px 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 9999;
+            border: 0.5px solid rgba(0,0,0,0.1);
+        }
+        #wa-banner.show {
+            top: 15px;
+        }
+        #wa-banner img {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .wa-banner-text h4 {
+            margin: 0 0 3px 0;
+            font-size: 15px;
+            color: #000;
+            font-weight: 600;
+        }
+        .wa-banner-text p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
+<body>
 
-    <h2 style="color: #075e54;">WhatsApp Bridge</h2>
-    <p id="status" style="color: #666; padding: 0 20px;">Tippe auf Verbinden, um Benachrichtigungen zu starten:</p>
-    
-    <button id="connect-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Verbinden</button>
+    <div class="wa-header">
+        <span>WhatsApp</span>
+    </div>
+
+    <div class="wa-chat">
+        <div class="status-box" id="control-box">
+            <p id="status-text" style="color: #333; margin: 0 0 10px 0; font-size: 14px;">Tippe auf Verbinden, um den Live-Empfang zu starten:</p>
+            <button id="connect-btn">Verbinden</button>
+        </div>
+    </div>
+
+    <!-- Das gefälschte WhatsApp Banner -->
+    <div id="wa-banner">
+        <img src="icon.png" alt="Avatar">
+        <div class="wa-banner-text">
+            <h4 id="banner-title">Absender</h4>
+            <p id="banner-message">Nachrichtentext...</p>
+        </div>
+    </div>
 
     <script>
         const ntfyTopic = "david-whatsapp-test-1234";
+        let bannerTimeout;
 
-        document.getElementById('connect-btn').addEventListener('click', async () => {
-            if ('serviceWorker' in navigator) {
-                await navigator.serviceWorker.register('sw.js');
-            }
-
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                alert('Bitte erlaube Benachrichtigungen!');
-                return;
-            }
-
-            document.getElementById('status').innerText = 'Status: Verbunden & lauscht...';
+        document.getElementById('connect-btn').addEventListener('click', () => {
+            document.getElementById('status-text').innerText = 'Status: Verbunden & bereit für Nachrichten!';
             document.getElementById('connect-btn').style.background = '#128c7e';
-            document.getElementById('connect-btn').innerText = 'Aktiv & Verbunden';
+            document.getElementById('connect-btn').innerText = 'Verbunden ✓';
 
+            // Verbindung zum ntfy Live-Stream aufbauen
             const eventSource = new EventSource(`https://ntfy.sh/${ntfyTopic}/sse`);
 
             eventSource.onmessage = function (event) {
@@ -40,25 +140,31 @@
                     const data = JSON.parse(event.data);
                     
                     if (data.event === 'message') {
-                        // Der Name des Absenders (z.B. Mama) wird der Haupttitel
                         const senderName = data.title || "WhatsApp";
-                        // Die Nachricht wird der Body
                         const messageBody = data.message || "Neue Nachricht";
 
-                        navigator.serviceWorker.ready.then(reg => {
-                            reg.showNotification(senderName, {
-                                body: messageBody,
-                                icon: 'icon.png',
-                                badge: 'icon.png',
-                                tag: 'whatsapp-fake'
-                            });
-                        });
+                        showWhatsAppBanner(senderName, messageBody);
                     }
                 } catch (e) {
-                    console.error("Fehler", e);
+                    console.error("Fehler beim Verarbeiten", e);
                 }
             };
         });
+
+        function showWhatsAppBanner(title, message) {
+            const banner = document.getElementById('wa-banner');
+            document.getElementById('banner-title').innerText = title;
+            document.getElementById('banner-message').innerText = message;
+
+            // Banner einblenden
+            banner.classList.add('show');
+
+            // Nach 4 Sekunden automatisch ausblenden
+            clearTimeout(bannerTimeout);
+            bannerTimeout = setTimeout(() => {
+                banner.classList.remove('show');
+            }, 4000);
+        }
     </script>
 </body>
 </html>
