@@ -8,32 +8,60 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
-<body style="font-family: -apple-system, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding-top: 60px; background: #f0f2f5;">
 
-    <h2 style="color: #075e54;">WhatsApp Test</h2>
-    <p style="color: #666;">Klicke den Button, geh sofort aus der App (Sperrbildschirm ansehen) und warte 4 Sekunden:</p>
-    <button id="test-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer;">Test-Benachrichtigung starten</button>
+    <h2 style="color: #075e54;">WhatsApp Bridge</h2>
+    <p id="status" style="color: #666; padding: 0 20px;">Tippe auf Verbinden, um Benachrichtigungen scharf zu schalten:</p>
+    
+    <button id="connect-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Verbinden</button>
 
     <script>
-        document.getElementById('test-btn').addEventListener('click', async () => {
-            // 1. Berechtigung sicherheitshalber anfragen
+        // Passe hier deinen Topic-Namen an (muss exakt derselbe sein, über den du die Nachricht schickst!)
+        const ntfyTopic = "david-whatsapp-test-1234";
+
+        document.getElementById('connect-btn').addEventListener('click', async () => {
+            // 1. Service Worker registrieren falls noch nicht geschehen
+            if ('serviceWorker' in navigator) {
+                await navigator.serviceWorker.register('sw.js');
+            }
+
+            // 2. Benachrichtigungs-Berechtigung anfragen
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
-                alert('Keine Berechtigung erteilt!');
+                alert('Bitte erlaube Benachrichtigungen in den iOS-Einstellungen!');
                 return;
             }
 
-            alert('Wichtig: Drücke jetzt sofort den Home-Balken/Home-Button und schließe die App, damit du auf dem Sperrbildschirm bist! In 4 Sekunden kommt die Nachricht.');
+            document.getElementById('status').innerText = 'Status: Verbunden & lauscht auf Nachrichten...';
+            document.getElementById('connect-btn').style.background = '#128c7e';
+            document.getElementById('connect-btn').innerText = 'Aktiv & Verbunden';
 
-            // 2. 4 Sekunden warten, damit du Zeit hast, die App zu verlassen
-            setTimeout(async () => {
-                const registration = await navigator.serviceWorker.ready;
-                registration.showNotification('Mama ❤️', {
-                    body: 'Bist du bald zu Hause?',
-                    icon: 'icon.png',
-                    badge: 'icon.png'
-                });
-            }, 4000);
+            // 3. Verbindung zum ntfy-Stream aufbauen
+            const eventSource = new EventSource(`https://ntfy.sh/${ntfyTopic}/sse`);
+
+            eventSource.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // Prüfen ob es eine echte Nachricht ist
+                    if (data.event === 'message' && data.message) {
+                        navigator.serviceWorker.ready.then(reg => {
+                            reg.showNotification(data.title || "WhatsApp", {
+                                body: data.message,
+                                icon: 'icon.png', // Zieht sich dein echtes WhatsApp-Logo aus dem Repo
+                                badge: 'icon.png',
+                                tag: 'whatsapp-fake'
+                            });
+                        });
+                    }
+                } catch (e) {
+                    console.error("Fehler beim Verarbeiten der Nachricht", e);
+                }
+            };
+
+            eventSource.onerror = function () {
+                document.getElementById('status').innerText = 'Verbindung unterbrochen, versuche Reconnect...';
+            };
         });
     </script>
 </body>
