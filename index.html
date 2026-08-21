@@ -16,7 +16,7 @@
     <button id="connect-btn" style="padding: 15px 30px; font-size: 16px; background: #25d366; color: white; border: none; border-radius: 25px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">Verbinden</button>
 
     <script>
-        // Passe hier deinen Topic-Namen an (muss exakt derselbe sein, über den du die Nachricht schickst!)
+        // Dein Topic-Name für ntfy
         const ntfyTopic = "david-whatsapp-test-1234";
 
         document.getElementById('connect-btn').addEventListener('click', async () => {
@@ -44,11 +44,15 @@
                     const data = JSON.parse(event.data);
                     
                     // Prüfen ob es eine echte Nachricht ist
-                    if (data.event === 'message' && data.message) {
+                    if (data.event === 'message') {
+                        // Individueller Name (Titel) oder Fallback auf WhatsApp
+                        const senderTitle = data.title || "WhatsApp";
+                        const messageBody = data.message || "Neue Nachricht";
+
                         navigator.serviceWorker.ready.then(reg => {
-                            reg.showNotification(data.title || "WhatsApp", {
-                                body: data.message,
-                                icon: 'icon.png', // Zieht sich dein echtes WhatsApp-Logo aus dem Repo
+                            reg.showNotification(senderTitle, {
+                                body: messageBody,
+                                icon: 'icon.png',
                                 badge: 'icon.png',
                                 tag: 'whatsapp-fake'
                             });
