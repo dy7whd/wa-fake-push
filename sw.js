@@ -1,28 +1,19 @@
-// Service Worker: Nimmt die Nachricht entgegen und zeigt sie an
 self.addEventListener('push', function(event) {
-    // Falls Daten vorhanden sind, nutze sie, sonst Standard-WhatsApp
-    let data = {};
+    let data = { title: "WhatsApp", message: "Neue Nachricht" };
     if (event.data) {
-        data = event.data.json();
+        try { data = event.data.json(); } catch (e) { data.message = event.data.text(); }
     }
     
-    const title = data.title || "WhatsApp";
-    const options = {
-        body: data.message || "Neue Nachricht",
-        icon: 'icon.png',
-        badge: 'icon.png',
-        tag: 'whatsapp-fake'
-    };
-
     event.waitUntil(
-        self.registration.showNotification(title, options)
+        self.registration.showNotification(data.title || "WhatsApp", {
+            body: data.message || "Neue Nachricht",
+            icon: 'icon.png',
+            badge: 'icon.png'
+        })
     );
 });
 
-// Klick auf die Benachrichtigung öffnet die App wieder
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
-    event.waitUntil(
-        clients.openWindow('/')
-    );
+    event.waitUntil(clients.openWindow('/'));
 });
