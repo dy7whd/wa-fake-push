@@ -24,8 +24,6 @@
             padding: 15px 20px;
             font-size: 18px;
             font-weight: 600;
-            display: flex;
-            align-items: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
         .wa-chat {
@@ -49,14 +47,18 @@
             background: #25d366;
             color: white;
             border: none;
-            padding: 14px 28px;
-            font-size: 16px;
+            padding: 14px 20px;
+            font-size: 15px;
             border-radius: 28px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 15px;
-            box-shadow: 0 4px 10px rgba(37,211,102,0.3);
+            margin-top: 12px;
             width: 100%;
+            box-shadow: 0 4px 10px rgba(37,211,102,0.3);
+        }
+        button.secondary {
+            background: #075e54;
+            box-shadow: 0 4px 10px rgba(7,94,84,0.3);
         }
         /* Das originalgetreue WhatsApp In-App Banner */
         #wa-banner {
@@ -87,26 +89,16 @@
             object-fit: cover;
             flex-shrink: 0;
         }
-        .wa-banner-text {
-            overflow: hidden;
-        }
         .wa-banner-text h4 {
             margin: 0 0 4px 0;
             font-size: 15px;
             color: #000;
             font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
         .wa-banner-text p {
             margin: 0;
             font-size: 14px;
             color: #666;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
     </style>
 </head>
@@ -118,9 +110,9 @@
 
     <div class="wa-chat">
         <div class="status-box">
-            <p id="status-text" style="color: #444; margin: 0 0 5px 0; font-size: 15px; font-weight: 500;">Bereit zur Verbindung</p>
-            <p style="color: #888; font-size: 12px; margin: 0 0 15px 0;">Lasse die App offen, um Nachrichten zu empfangen.</p>
-            <button id="connect-btn">Verbinden & Starten</button>
+            <p id="status-text" style="color: #444; margin: 0 0 10px 0; font-size: 14px; font-weight: 500;">Bereit</p>
+            <button id="start-btn">Live-Empfang starten</button>
+            <button class="secondary" id="test-btn">Test-Banner anzeigen</button>
         </div>
     </div>
 
@@ -137,41 +129,29 @@
         const ntfyTopic = "david-whatsapp-test-1234";
         let bannerTimeout;
         let lastMessageId = null;
-        let pollingInterval = null;
 
-        document.getElementById('connect-btn').addEventListener('click', () => {
-            const statusText = document.getElementById('status-text');
-            const btn = document.getElementById('connect-btn');
-            
-            statusText.innerText = 'Lauscht aktiv auf Nachrichten...';
-            btn.style.background = '#128c7e';
-            btn.innerText = 'Aktiv & Verbunden ✓';
+        // 1. Manueller Test-Button (funktioniert immer)
+        document.getElementById('test-btn').addEventListener('click', () => {
+            showWhatsAppBanner("Mama ❤️", "Das ist ein lokaler Test-Hinweis!");
+        });
 
-            // Startet den Abruf alle 1,5 Sekunden
-            if (pollingInterval) clearInterval(pollingInterval);
-            
-            pollingInterval = setInterval(checkForMessages, 1500);
+        // 2. Automatischer Start
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('status-text').innerText = 'Prüft alle 1 Sekunde...';
+            setInterval(checkForMessages, 1000);
         });
 
         async function checkForMessages() {
             try {
-                // Wir holen die letzten Nachrichten als JSON von ntfy
                 const response = await fetch(`https://ntfy.sh/${ntfyTopic}/json?poll=1`);
                 const data = await response.json();
 
-                if (data && data.id) {
-                    // Prüfen, ob es eine neue Nachricht ist, die wir noch nicht gezeigt haben
-                    if (data.id !== lastMessageId) {
-                        lastMessageId = data.id;
-                        
-                        const senderName = data.title || "WhatsApp";
-                        const messageBody = data.message || "Neue Nachricht";
-
-                        showWhatsAppBanner(senderName, messageBody);
-                    }
+                if (data && data.id && data.id !== lastMessageId) {
+                    lastMessageId = data.id;
+                    showWhatsAppBanner(data.title || "WhatsApp", data.message || "Neue Nachricht");
                 }
             } catch (e) {
-                console.error("Fehler beim Abrufen:", e);
+                console.error("Netzwerkfehler:", e);
             }
         }
 
@@ -180,10 +160,8 @@
             document.getElementById('banner-title').innerText = title;
             document.getElementById('banner-message').innerText = message;
 
-            // Banner einblenden
             banner.classList.add('show');
 
-            // Nach 5 Sekunden automatisch ausblenden
             clearTimeout(bannerTimeout);
             bannerTimeout = setTimeout(() => {
                 banner.classList.remove('show');
