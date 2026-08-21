@@ -18,7 +18,6 @@
             height: 100vh;
             overflow: hidden;
         }
-        /* Header im WhatsApp-Design */
         .wa-header {
             background-color: #075e54;
             color: white;
@@ -30,48 +29,48 @@
             justify-content: space-between;
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
-        /* Chat-Bereich */
         .wa-chat {
             flex: 1;
             padding: 20px;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            justify-content: center;
+            align-items: center;
         }
         .status-box {
             background: white;
-            padding: 20px;
-            border-radius: 12px;
+            padding: 25px;
+            border-radius: 16px;
             text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin: auto;
-            max-width: 300px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            max-width: 320px;
+            width: 100%;
         }
         button {
             background: #25d366;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 14px 28px;
             font-size: 16px;
-            border-radius: 24px;
+            border-radius: 28px;
             font-weight: bold;
             cursor: pointer;
             margin-top: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 10px rgba(37,211,102,0.3);
+            width: 100%;
         }
         /* Das originalgetreue WhatsApp In-App Banner */
         #wa-banner {
             position: fixed;
-            top: -100px;
-            left: 10px;
-            right: 10px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 12px 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            top: -120px;
+            left: 12px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 18px;
+            padding: 14px 18px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.25);
             display: flex;
             align-items: center;
             gap: 14px;
@@ -80,24 +79,35 @@
             border: 0.5px solid rgba(0,0,0,0.1);
         }
         #wa-banner.show {
-            top: 15px;
+            top: 20px;
         }
         #wa-banner img {
-            width: 45px;
-            height: 45px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
             object-fit: cover;
+            flex-shrink: 0;
+        }
+        .wa-banner-text {
+            overflow: hidden;
         }
         .wa-banner-text h4 {
-            margin: 0 0 3px 0;
+            margin: 0 0 4px 0;
             font-size: 15px;
             color: #000;
             font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .wa-banner-text p {
             margin: 0;
             font-size: 14px;
             color: #666;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -108,8 +118,9 @@
     </div>
 
     <div class="wa-chat">
-        <div class="status-box" id="control-box">
-            <p id="status-text" style="color: #333; margin: 0 0 10px 0; font-size: 14px;">Tippe auf Verbinden, um den Live-Empfang zu starten:</p>
+        <div class="status-box">
+            <p id="status-text" style="color: #444; margin: 0 0 5px 0; font-size: 15px; font-weight: 500;">Bereit zur Verbindung</p>
+            <p style="color: #888; font-size: 12px; margin: 0 0 15px 0;">Lasse die App offen, um Benachrichtigungen zu empfangen.</p>
             <button id="connect-btn">Verbinden</button>
         </div>
     </div>
@@ -128,12 +139,19 @@
         let bannerTimeout;
 
         document.getElementById('connect-btn').addEventListener('click', () => {
-            document.getElementById('status-text').innerText = 'Status: Verbunden & bereit für Nachrichten!';
-            document.getElementById('connect-btn').style.background = '#128c7e';
-            document.getElementById('connect-btn').innerText = 'Verbunden ✓';
+            const statusText = document.getElementById('status-text');
+            const btn = document.getElementById('connect-btn');
+            
+            statusText.innerText = 'Verbinde mit Server...';
+            btn.style.background = '#128c7e';
+            btn.innerText = 'Verbunden ✓';
 
             // Verbindung zum ntfy Live-Stream aufbauen
             const eventSource = new EventSource(`https://ntfy.sh/${ntfyTopic}/sse`);
+
+            eventSource.onopen = function() {
+                statusText.innerText = 'Lauscht live auf Nachrichten...';
+            };
 
             eventSource.onmessage = function (event) {
                 try {
@@ -149,6 +167,10 @@
                     console.error("Fehler beim Verarbeiten", e);
                 }
             };
+
+            eventSource.onerror = function () {
+                statusText.innerText = 'Verbindung getrennt, verbinde neu...';
+            };
         });
 
         function showWhatsAppBanner(title, message) {
@@ -159,11 +181,11 @@
             // Banner einblenden
             banner.classList.add('show');
 
-            // Nach 4 Sekunden automatisch ausblenden
+            // Nach 5 Sekunden automatisch ausblenden
             clearTimeout(bannerTimeout);
             bannerTimeout = setTimeout(() => {
                 banner.classList.remove('show');
-            }, 4000);
+            }, 5000);
         }
     </script>
 </body>
